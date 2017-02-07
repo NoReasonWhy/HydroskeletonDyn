@@ -1,0 +1,79 @@
+function [err_vii2dii_x] = err_vii2dii_x_fcn(q)
+%ERR_X_DVII_FCN Summary of this function goes here
+%   Detailed explanation goes here
+
+% n_sec
+n_sec = length(q(:,1)) - 1;
+
+% vec_vi2di
+% Mind that the length is equal to n_sec
+% The vectors vi2di are used as references for vii2dii 
+vec_vi2di_x = q(1:end-1,3) - q(1:end-1,1);
+vec_vi2di_y = q(1:end-1,4) - q(1:end-1,2);
+vec_vi2di_m = sqrt(vec_vi2di_x.^2 + vec_vi2di_y.^2);
+vec_vi2di   = [vec_vi2di_x vec_vi2di_y];
+vec_vi2di_e = [vec_vi2di_x vec_vi2di_y]./[vec_vi2di_m vec_vi2di_m];
+
+% vec_vii2dii
+vec_vii2dii_x = q(2:end,3) - q(2:end,1);
+vec_vii2dii_y = q(2:end,4) - q(2:end,2);
+vec_vii2dii_m = sqrt(vec_vii2dii_x.^2 + vec_vii2dii_y.^2);
+
+
+% vec_di2vi_p, a vector perpendicular to vec_di2vi
+% Set the normal vector as [x, 1] where x is the unknown to solve
+
+% % vec_di2vi_p_x(n_sec+1,1) will not be used.
+vec_vi2di_p_x=zeros(n_sec,1); 
+vec_vi2di_p_y=zeros(n_sec,1);
+
+
+% Rotate 90 degrees clockwise
+vec_tmp = rotz(-90)*[vec_vi2di_e';zeros(n_sec,1)];
+vec_vi2di_rotc90_e = vec_tmp(1:2,1)';
+
+% Check and revise the direction of vec_di2vi_p_e
+% vec_di2vi_p should be 90 degree ahead of vec_di2vi counterclockwise
+e_h = [ones(n_sec,1), zeros(n_sec,1)]; % The unit vector for the x-coordinate
+
+% % Get the agnles for the two vectors.
+% % dot() fcn processes colume vectors.
+angle_di2vi	  = transpose(acos(dot(vec_vi2di_e',   e_h'))/pi*180); % (degrees)
+angle_di2vi_p = transpose(acos(dot(vec_vi2di_rotc90_e', e_h'))/pi*180); % (degrees)
+
+for i = 1: n_sec
+	if vec_vi2di_y(i,1)<0
+		angle_di2vi(i,1)=angle_di2vi(i,1)+180;
+	end
+	
+	if vec_vi2di_p_y(i,1)<0
+		angle_di2vi_p(i,1)=angle_di2vi_p(i,1)+180;
+	end
+	
+	% If the direction accord to the reference, the normal vector should lead.
+	% If not the orginal vector leads the normal vector (below). The reverse the normal
+	% vector
+	if vec_dii2vii(i,1)<vec_di2vi_p(i,1)
+% 		disp('Detects a reversed normal vector. Reverse it')
+		vec_vi2pi_rotc90_e(i,:) = - vec_vi2pi_rotc90_e(i,:);
+	end
+end
+
+
+% vec_di2vi_p_e, the unit vector of vec_di2vi_p
+vec_di2vi_p_m   = sqrt(vec_vi2di_p_x .^ 2 + sqrt(vec_vi2di_p_y .^ 2));
+vec_di2vi_p_x_e = vec_vi2di_p_x ./ vec_di2vi_p_m;
+vec_di2vi_p_y_e = vec_vi2di_p_y ./ vec_di2vi_p_m;
+vec_vi2pi_rotc90_e   = [vec_di2vi_p_x_e, vec_di2vi_p_y_e];
+
+
+% vec_vii2dii
+vec_vi2di_x = q(2:end,3) - q(2:end,1);
+vec_vi2di_y = q(2:end,4) - q(2:end,2);
+vec_vi2di   = [vec_vi2di_x, vec_vi2di_y];
+
+% err_vii2dii is the projection of vec _vii2dii on vec_di2vi_p_e
+err_vii2dii_x = dot(vec_vi2di', vec_vi2pi_rotc90_e')';
+
+end
+
